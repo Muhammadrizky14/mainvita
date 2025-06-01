@@ -1,28 +1,23 @@
 <?php
 
-// namespace App\Models;
+namespace App\Models;
 
-// use Illuminate\Database\Eloquent\Factories\HasFactory;
-// use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-// class BookingService extends Model
-// {
-//     use HasFactory;
+class BookingService extends Model
+{
+    use HasFactory;
 
-//     protected $fillable = [
-//         'booking_id',
-//         'service_id',
-//         'service_name',
-//         'price'
-//     ];
+    protected $fillable = [
+        'booking_id',
+        'service_id',
+        'service_name',
+        'price'
+    ];
 
-//     public function booking()
-//     {
-//         return $this->belongsTo(Booking::class);
-//     }
-
-//     public function service()
-//     {
-//         return $this->belongsTo(SpaService::class, 'service_id');
-//     }
-// }
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class, 'booking_id');
+    }
+}

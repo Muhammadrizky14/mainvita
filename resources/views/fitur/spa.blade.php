@@ -74,11 +74,11 @@
                                     class="scheduleBtn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded">
                                     Schedule
                                 </button>
-                                {{-- <button
+                                <button
                                     class="bookingBtn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
                                     data-spa-id="{{ $spa->id_spa }}">
-                                    Booking online
-                                </button> --}}
+                                    Booking Online
+                                </button>
                             </div>
 
                             <!-- Available -->
@@ -130,6 +130,8 @@
     </div>
 
     @include('layouts.footer')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('js/spa-booking.js') }}"></script>
 </x-app-layout>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>

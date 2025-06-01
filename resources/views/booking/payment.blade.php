@@ -4,7 +4,6 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-center">Complete Your Payment</h2>
-                    
                     <div class="mb-8 p-4 bg-blue-50 rounded-lg">
                         <h3 class="text-lg font-semibold mb-2">Booking Details</h3>
                         <div class="grid grid-cols-2 gap-4">
@@ -30,19 +29,18 @@
                             </div>
                             <div>
                                 <p class="text-sm text-gray-600">Booking Date & Time</p>
-                                <p class="font-medium">{{ date('d M Y', strtotime($booking->booking_date)) }} at {{ date('H:i', strtotime($booking->booking_time)) }}</p>
+                                <p class="font-medium">{{ date('d M Y', strtotime($booking->booking_date)) }} at {{ $booking->booking_time }}</p>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="mb-8">
                         <h3 class="text-lg font-semibold mb-2">Services</h3>
                         <div class="border rounded-lg overflow-hidden">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -62,9 +60,8 @@
                             </table>
                         </div>
                     </div>
-                    
-                    <div class="text-center">
-                        <button id="pay-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                    <div class="text-center mt-8">
+                        <button id="pay-button" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg">
                             Pay Now
                         </button>
                     </div>
@@ -72,26 +69,25 @@
             </div>
         </div>
     </div>
-    
-    <script type="text/javascript" src="{{ config('midtrans.snap_url') }}" data-client-key="{{ config('midtrans.client_key') }}"></script>
-    <script type="text/javascript">
+
+    <!-- Midtrans Snap Script -->
+    <script type="text/javascript"
+        src="{{ config('services.midtrans.snap_url') }}"
+        data-client-key="{{ config('services.midtrans.client_key') }}">
+    </script>
+    <script>
         document.getElementById('pay-button').onclick = function() {
-            // Open Midtrans Snap
             window.snap.pay('{{ $booking->payment_token }}', {
                 onSuccess: function(result) {
-                    /* You may add your own implementation here */
                     window.location.href = '/booking/confirmation/{{ $booking->id }}';
                 },
                 onPending: function(result) {
-                    /* You may add your own implementation here */
                     alert('Payment pending. Please complete your payment.');
                 },
                 onError: function(result) {
-                    /* You may add your own implementation here */
                     alert('Payment failed. Please try again.');
                 },
                 onClose: function() {
-                    /* You may add your own implementation here */
                     alert('You closed the payment window without completing the payment.');
                 }
             });

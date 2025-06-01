@@ -18,9 +18,6 @@ class SpaService extends Model
         'is_active'
     ];
 
-    /**
-     * Get the spa that owns the service.
-     */
     public function spa()
     {
         return $this->belongsTo(Spa::class, 'spa_id', 'id_spa');

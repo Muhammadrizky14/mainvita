@@ -2,18 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -51,9 +39,9 @@ return [
         'server_key' => env('MIDTRANS_SERVER_KEY'),
         'client_key' => env('MIDTRANS_CLIENT_KEY'),
         'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
-        'snap_url' => env('MIDTRANS_IS_PRODUCTION', false) ? 
-                      'https://app.midtrans.com/snap/snap.js' : 
-                      'https://app.sandbox.midtrans.com/snap/snap.js',
+        'snap_url' => env('MIDTRANS_IS_PRODUCTION', false)
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js',
     ],
 
     'openweathermap' => [
@@ -61,7 +49,7 @@ return [
     ],
 
     'openai' => [
-    'api_key' => env('OPENAI_API_KEY'),
-],
+        'api_key' => env('OPENAI_API_KEY'),
+    ],
 
 ];

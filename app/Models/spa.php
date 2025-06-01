@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Spa extends Model
 {
+    use HasFactory;
+
     protected $table = 'spas';
     protected $primaryKey = 'id_spa';
     protected $fillable = [
@@ -23,11 +25,6 @@ class Spa extends Model
         'waktuBuka' => 'array',
     ];
 
-    use HasFactory;
-    
-    /**
-     * Get the services for the spa.
-     */
     public function services()
     {
         return $this->hasMany(SpaService::class, 'spa_id', 'id_spa');

@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('booking_services', function (Blueprint $table) {
@@ -18,14 +15,10 @@ return new class extends Migration
             $table->string('service_name');
             $table->decimal('price', 10, 2);
             $table->timestamps();
-            
             $table->foreign('booking_id')->references('id')->on('bookings')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('booking_services');

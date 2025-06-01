@@ -1,171 +1,160 @@
 <?php
 
-// namespace App\Http\Controllers;
+namespace App\Http\Controllers;
 
-// use App\Models\Booking;
-// use App\Models\BookingService;
-// use App\Models\Spa;
-// use App\Models\SpaService;
-// use Illuminate\Http\Request;
-// use Illuminate\Support\Facades\DB;
-// use Illuminate\Support\Str;
-// use Midtrans\Snap;
+use App\Models\Booking;
+use App\Models\BookingService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BookingSuccessMail;
+use Midtrans\Snap;
 
-// class BookingController extends Controller
-// {
-//     public function process(Request $request)
-//     {
-//         // Validate request
-//         $request->validate([
-//             'spa_id' => 'required|exists:spas,id_spa',
-//             'customer_name' => 'required|string|max:255',
-//             'customer_email' => 'required|email|max:255',
-//             'customer_phone' => 'required|string|max:20',
-//             'booking_date' => 'required|date',
-//             'booking_time' => 'required',
-//             'services' => 'required|array',
-//             'services.*.id' => 'required|exists:spa_services,id',
-//             'total_amount' => 'required|numeric'
-//         ]);
+class BookingController extends Controller
+{
+    public function process(Request $request)
+    {
+        $request->validate([
+            'spa_id' => 'required|exists:spas,id_spa',
+            'booking_date' => 'required|date',
+            'booking_time' => 'required',
+            'services' => 'required|array',
+            'services.*' => 'required|exists:spa_services,id',
+        ]);
 
-//         try {
-//             DB::beginTransaction();
+        try {
+            DB::beginTransaction();
+            $bookingCode = 'SPA-' . strtoupper(Str::random(8));
+            $booking = Booking::create([
+                'booking_code' => $bookingCode,
+                'spa_id' => $request->spa_id,
+                'customer_name' => auth()->user()->name ?? 'Guest',
+                'customer_email' => auth()->user()->email ?? 'guest@example.com',
+                'customer_phone' => auth()->user()->phone ?? '0000',
+                'booking_date' => $request->booking_date,
+                'booking_time' => $request->booking_time,
+                'total_amount' => 0, // update below
+                'status' => 'pending',
+                'payment_status' => 'pending',
+            ]);
+            $total = 0;
+            $itemDetails = [];
+            foreach ($request->services as $serviceId) {
+                $service = \App\Models\SpaService::findOrFail($serviceId);
+                BookingService::create([
+                    'booking_id' => $booking->id,
+                    'service_id' => $service->id,
+                    'service_name' => $service->name,
+                    'price' => $service->price,
+                ]);
+                $total += $service->price;
+                $itemDetails[] = [
+                    'id' => $service->id,
+                    'price' => (int) $service->price,
+                    'quantity' => 1,
+                    'name' => $service->name,
+                ];
+            }
+            $booking->total_amount = $total;
+            $booking->save();
 
-//             // Generate booking code
-//             $bookingCode = 'SPA-' . strtoupper(Str::random(8));
+            \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
+            \Midtrans\Config::$isProduction = config('services.midtrans.is_production');
 
-//             // Create booking
-//             $booking = Booking::create([
-//                 'booking_code' => $bookingCode,
-//                 'spa_id' => $request->spa_id,
-//                 'customer_name' => $request->customer_name,
-//                 'customer_email' => $request->customer_email,
-//                 'customer_phone' => $request->customer_phone,
-//                 'booking_date' => $request->booking_date,
-//                 'booking_time' => $request->booking_time,
-//                 'notes' => $request->notes,
-//                 'total_amount' => $request->total_amount,
-//                 'status' => 'pending'
-//             ]);
+            $params = [
+                'transaction_details' => [
+                    'order_id' => $bookingCode,
+                    'gross_amount' => $total,
+                ],
+                'customer_details' => [
+                    'first_name' => $booking->customer_name,
+                    'email' => $booking->customer_email,
+                    'phone' => $booking->customer_phone,
+                ],
+                'item_details' => $itemDetails,
+            ];
+            $snapToken = Snap::getSnapToken($params);
+            $booking->update(['payment_token' => $snapToken]);
 
-//             // Save booking services
-//             foreach ($request->services as $service) {
-//                 BookingService::create([
-//                     'booking_id' => $booking->id,
-//                     'service_id' => $service['id'],
-//                     'service_name' => $service['name'],
-//                     'price' => $service['price']
-//                 ]);
-//             }
+            DB::commit();
 
-//             // Get spa details
-//             $spa = Spa::find($request->spa_id);
+            return response()->json([
+                'success' => true,
+                'booking_id' => $booking->id,
+                'snap_token' => $snapToken,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing booking: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
-//             // Set up Midtrans payment
-// \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
-// \Midtrans\Config::$isProduction = config('services.midtrans.is_production');
+    public function payment($id)
+    {
+        $booking = Booking::with('services')->findOrFail($id);
+        return view('booking.payment', compact('booking'));
+    }
 
-//             // Prepare Midtrans parameters
-//             $params = [
-//                 'transaction_details' => [
-//                     'order_id' => $bookingCode,
-//                     'gross_amount' => (int) $request->total_amount,
-//                 ],
-//                 'customer_details' => [
-//                     'first_name' => $request->customer_name,
-//                     'email' => $request->customer_email,
-//                     'phone' => $request->customer_phone,
-//                 ],
-//                 'item_details' => []
-//             ];
+    // MIDTRANS CALLBACK / NOTIFICATION HANDLER
+    public function handleMidtransCallback(Request $request)
+    {
+        \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('services.midtrans.is_production');
+        \Midtrans\Config::$isSanitized = true;
+        \Midtrans\Config::$is3ds = true;
 
-//             // Add services to item details
-//             foreach ($request->services as $service) {
-//                 $params['item_details'][] = [
-//                     'id' => $service['id'],
-//                     'price' => (int) $service['price'],
-//                     'quantity' => 1,
-//                     'name' => $service['name'] . ' at ' . $spa->nama,
-//                 ];
-//             }
+        $notif = new \Midtrans\Notification();
 
-//             // Create Snap Token
-//             $snapToken = Snap::getSnapToken($params);
+        $transaction = $notif->transaction_status;
+        $type = $notif->payment_type;
+        $order_id = $notif->order_id;
+        $fraud = $notif->fraud_status;
 
-//             // Update booking with snap token
-//             $booking->update([
-//                 'payment_token' => $snapToken
-//             ]);
+        $booking = Booking::where('booking_code', $order_id)->first();
 
-//             DB::commit();
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found'], 404);
+        }
 
-//             return response()->json([
-//                 'success' => true,
-//                 'booking_id' => $booking->id,
-//                 'snap_token' => $snapToken
-//             ]);
-//         } catch (\Exception $e) {
-//             DB::rollBack();
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'Error processing booking: ' . $e->getMessage()
-//             ], 500);
-//         }
-//     }
+        if ($transaction == 'capture') {
+            if ($type == 'credit_card') {
+                if ($fraud == 'challenge') {
+                    $booking->status = 'pending';
+                    $booking->payment_status = 'pending';
+                } else {
+                    $booking->status = 'confirmed';
+                    $booking->payment_status = 'paid';
+                }
+            }
+        } elseif ($transaction == 'settlement') {
+            $booking->status = 'confirmed';
+            $booking->payment_status = 'paid';
+        } elseif ($transaction == 'pending') {
+            $booking->status = 'pending';
+            $booking->payment_status = 'pending';
+        } elseif ($transaction == 'deny' || $transaction == 'expire' || $transaction == 'cancel') {
+            $booking->status = 'cancelled';
+            $booking->payment_status = 'failed';
+        }
 
-//     public function showPayment($id)
-//     {
-//         $booking = Booking::with('services')->findOrFail($id);
-        
-//         return view('booking.payment', compact('booking'));
-//     }
+        $booking->payment_details = json_encode($notif);
+        $booking->save();
 
-//     public function confirmation($id)
-//     {
-//         $booking = Booking::with('services')->findOrFail($id);
-        
-//         return view('booking.confirmation', compact('booking'));
-//     }
+        // Kirim email konfirmasi jika sukses
+        if ($booking->status == 'confirmed' && $booking->customer_email) {
+            Mail::to($booking->customer_email)->send(new BookingSuccessMail($booking));
+        }
 
-//     public function handlePaymentNotification(Request $request)
-//     {
-//         $notificationBody = json_decode($request->getContent(), true);
-        
-//         // Verify signature
-//         $orderId = $notificationBody['order_id'];
-//         $statusCode = $notificationBody['status_code'];
-//         $grossAmount = $notificationBody['gross_amount'];
-//         $serverKey = config('midtrans.server_key');
-//         $signature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
-        
-//         if ($signature !== $notificationBody['signature_key']) {
-//             return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
-//         }
-        
-//         // Find booking by order_id
-//         $booking = Booking::where('booking_code', $orderId)->first();
-        
-//         if (!$booking) {
-//             return response()->json(['status' => 'error', 'message' => 'Booking not found'], 404);
-//         }
-        
-//         // Update booking status based on transaction status
-//         $transactionStatus = $notificationBody['transaction_status'];
-        
-//         if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-//             $booking->status = 'confirmed';
-//             $booking->payment_status = 'paid';
-//         } elseif ($transactionStatus == 'pending') {
-//             $booking->status = 'pending';
-//             $booking->payment_status = 'pending';
-//         } elseif ($transactionStatus == 'deny' || $transactionStatus == 'expire' || $transactionStatus == 'cancel') {
-//             $booking->status = 'cancelled';
-//             $booking->payment_status = 'failed';
-//         }
-        
-//         $booking->payment_details = json_encode($notificationBody);
-//         $booking->save();
-        
-//         return response()->json(['status' => 'success']);
-//     }
-// }
+        return response()->json(['message' => 'Notification handled'], 200);
+    }
+
+    public function confirmation($id)
+    {
+        $booking = Booking::with('services')->findOrFail($id);
+        return view('booking.confirmation', compact('booking'));
+    }
+}

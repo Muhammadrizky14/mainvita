@@ -27,6 +27,7 @@ use App\Http\Controllers\VouchersController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatNotificationController;
+use App\Http\Controllers\BookingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -269,16 +270,13 @@ Route::get('auth/{provider}', [SocialAuthController::class, 'redirectToProvider'
 Route::get('auth/{provider}/callback', [SocialAuthController::class, 'handleProviderCallback'])
     ->name('social.callback');
 
-// Booking & Midtrans Payment Flow (User)
-// Route::prefix('booking')->group(function() {
-//     Route::post('/process', [BookingController::class, 'process'])->name('booking.process'); // Submit booking + dapat Snap Token
-//     Route::get('/payment/{id}', [BookingController::class, 'showPayment'])->name('booking.payment'); // Halaman pembayaran (Snap)
-//     Route::get('/confirmation/{id}', [BookingController::class, 'confirmation'])->name('booking.confirmation'); // Setelah pembayaran
-//     Route::post('/notification', [BookingController::class, 'handlePaymentNotification'])->name('booking.notification'); // Callback Midtrans
-// });
-
 // Midtrans notification handler
 // Route::post('/booking/notification', [BookingController::class, 'handlePaymentNotification'])->name('booking.notification');
+// Tambahkan route berikut sebelum require __DIR__ . '/auth.php';
+Route::post('/spa/booking', [BookingController::class, 'process'])->name('spa.booking');
+Route::get('/booking/payment/{id}', [BookingController::class, 'payment'])->name('booking.payment');
+Route::post('/midtrans/callback', [BookingController::class, 'handleMidtransCallback']);
+Route::get('/booking/confirmation/{id}', [BookingController::class, 'confirmation']);
 
 Route::post('/change-language', [LanguageController::class, 'changeLanguage']);
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
