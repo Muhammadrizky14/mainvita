@@ -47,7 +47,7 @@
                     </div>
 
                     <div class="flex flex-wrap justify-start items-center w-full gap-4">
-                    <!-- Price range filter -->
+                        <!-- Price range filter -->
                         <div class="flex justify-start items-center w-full space-x-4">
                             <label for="min-price" class="text-sm font-medium text-gray-700">Price Range:</label>
                             <input type="number" id="min-price" name="min_price"
@@ -57,6 +57,17 @@
                             <input type="number" id="max-price" name="max_price"
                                 class="rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600"
                                 placeholder="Max" value="{{ request('max_price') }}" />
+                        </div>
+                        <!-- Class type filter -->
+                        <div class="flex items-center">
+                            <label for="class_type" class="text-sm font-medium text-gray-700 mr-2">Tipe Kelas:</label>
+                            <select name="class_type" id="class_type"
+                                class="block rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600">
+                                <option value="">Semua</option>
+                                <option value="offline" {{ request('class_type') == 'offline' ? 'selected' : '' }}>Offline</option>
+                                <option value="online" {{ request('class_type') == 'online' ? 'selected' : '' }}>Online</option>
+                                <option value="private" {{ request('class_type') == 'private' ? 'selected' : '' }}>Private</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -87,11 +98,29 @@
                             <p class="text-gray-500 text-lg mb-3">Alamat: {{ $yoga->alamat }}</p>
                             <p class="text-gray-500 text-lg mb-3">No. HP: {{ $yoga->noHP }}</p>
                             <p class="text-gray-500 text-lg mb-6">Harga: Rp {{ number_format($yoga->harga, 0, ',', '.') }}</p>
-                            
-                            <div class="mt-4">
+                            @if(isset($yoga->class_type))
+                                <p class="text-gray-500 text-lg mb-6">
+                                    Tipe Kelas: 
+                                    @if($yoga->class_type == 'offline')
+                                        Offline
+                                    @elseif($yoga->class_type == 'online')
+                                        Online
+                                    @elseif($yoga->class_type == 'private')
+                                        Private
+                                    @else
+                                        -
+                                    @endif
+                                </p>
+                            @endif
+                            <div class="mt-4 flex space-x-3">
                                 <button
                                     class="scheduleBtn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded">
                                     Schedule
+                                </button>
+                                <button
+                                    class="bookingBtn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
+                                    data-yoga-id="{{ $yoga->id_yoga }}">
+                                    Booking Online
                                 </button>
                             </div>
 
@@ -128,6 +157,68 @@
     </div>
 
     @include('layouts.footer')
+
+    <!-- Modal Booking Yoga -->
+    <div id="yogaBookingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
+            <button class="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
+                onclick="closeYogaBookingModal()">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Booking Yoga</h3>
+                <form id="yogaBookingForm" class="space-y-4">
+                    <input type="hidden" id="modal-yoga-id" name="yoga_id">
+                    <div>
+                        <label for="customer_name" class="block text-sm font-medium text-gray-700">Nama</label>
+                        <input type="text" id="customer_name" name="customer_name" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="customer_email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="customer_email" name="customer_email" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="customer_phone" class="block text-sm font-medium text-gray-700">No. HP</label>
+                        <input type="text" id="customer_phone" name="customer_phone" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="booking_date" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                        <input type="date" id="booking_date" name="booking_date" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="booking_time" class="block text-sm font-medium text-gray-700">Jam</label>
+                        <input type="time" id="booking_time" name="booking_time" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="class_type_booking" class="block text-sm font-medium text-gray-700">Tipe Kelas</label>
+                        <select id="class_type_booking" name="class_type_booking" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <option value="">Pilih Tipe</option>
+                            <option value="offline">Offline</option>
+                            <option value="online">Online</option>
+                            <option value="private">Private</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Catatan</label>
+                        <textarea id="notes" name="notes" rows="2"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"></textarea>
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 transition duration-300">
+                        Booking & Lanjut Bayar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </x-app-layout>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -167,7 +258,86 @@
                 confirmButtonText: 'OK'
             });
         }
+
+        // Booking Yoga Button
+        const bookingBtns = document.querySelectorAll('.bookingBtn');
+        const yogaBookingModal = document.getElementById('yogaBookingModal');
+        const yogaBookingForm = document.getElementById('yogaBookingForm');
+        let yogaIdForBooking = null;
+
+        bookingBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                yogaIdForBooking = this.getAttribute('data-yoga-id');
+                document.getElementById('modal-yoga-id').value = yogaIdForBooking;
+                openYogaBookingModal();
+            });
+        });
+
+        function openYogaBookingModal() {
+            yogaBookingModal.classList.remove('hidden');
+        }
+
+        window.closeYogaBookingModal = function() {
+            yogaBookingModal.classList.add('hidden');
+            yogaBookingForm.reset();
+        }
+
+        yogaBookingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(yogaBookingForm);
+            const data = {};
+            formData.forEach((value, key) => { data[key] = value; });
+
+            fetch('/yoga/booking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(response => {
+                if (response.success && response.payment_token && response.booking_id) {
+                    closeYogaBookingModal();
+                    // Tampilkan Snap Midtrans
+                    loadMidtransSnap(response.payment_token, response.booking_id);
+                } else {
+                    Swal.fire('Error', response.message || 'Gagal booking. Silakan coba lagi.', 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('Error', 'Terjadi kesalahan pada server.', 'error');
+            });
+        });
+
+        function loadMidtransSnap(token, bookingId) {
+            // Pastikan Snap sudah di-load
+            if (!window.snap) {
+                Swal.fire('Error', 'Midtrans Snap belum termuat. Coba refresh halaman.', 'error');
+                return;
+            }
+            window.snap.pay(token, {
+                onSuccess: function(result){
+                    Swal.fire('Pembayaran Berhasil', 'Booking yoga Anda telah dibayar!', 'success')
+                        .then(() => window.location.reload());
+                },
+                onPending: function(result){
+                    Swal.fire('Pembayaran Pending', 'Pembayaran Anda sedang diproses.', 'info');
+                },
+                onError: function(result){
+                    Swal.fire('Error', 'Pembayaran gagal. Silakan coba lagi.', 'error');
+                },
+                onClose: function(){
+                    Swal.fire('Dibatalkan', 'Anda menutup pembayaran tanpa menyelesaikan.', 'warning');
+                }
+            });
+        }
     });
+</script>
+<script type="text/javascript"
+    src="{{ config('services.midtrans.snap_url') }}"
+    data-client-key="{{ config('services.midtrans.client_key') }}">
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
